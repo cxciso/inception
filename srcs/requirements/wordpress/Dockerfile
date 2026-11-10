@@ -7,7 +7,6 @@ RUN apt-get update \
         mariadb-client curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# WP-CLI: command-line tool used to download, configure and install WordPress
 RUN curl -fsSL -o /usr/local/bin/wp \
         https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
     && chmod +x /usr/local/bin/wp

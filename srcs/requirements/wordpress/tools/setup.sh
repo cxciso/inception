@@ -1,14 +1,12 @@
 #!/bin/bash
 set -e
 
-# Passwords come from Docker secrets (files mounted in /run/secrets)
 DB_PASS=$(cat /run/secrets/db_password)
 WP_ADMIN_PASS=$(cat /run/secrets/wp_admin_password)
 WP_USER_PASS=$(cat /run/secrets/wp_user_password)
 
 cd /var/www/html
 
-# Wait until MariaDB accepts connections (30 tries max, never infinite)
 for i in $(seq 1 30); do
     if mariadb -h"${MYSQL_HOST}" -u"${MYSQL_USER}" -p"${DB_PASS}" \
             -e "SELECT 1;" "${MYSQL_DATABASE}" > /dev/null 2>&1; then
@@ -23,7 +21,6 @@ for i in $(seq 1 30); do
     sleep 2
 done
 
-# First start only: the volume has no wp-config.php yet
 if [ ! -f wp-config.php ]; then
     echo "[wordpress] Installing WordPress..."
 
@@ -51,9 +48,7 @@ if [ ! -f wp-config.php ]; then
         --user_pass="${WP_USER_PASS}"
 fi
 
-# php-fpm runs as www-data: it must own the website files
 chown -R www-data:www-data /var/www/html
 
 echo "[wordpress] Starting php-fpm..."
-# exec: php-fpm replaces this script and becomes PID 1, -F = stay in foreground
 exec php-fpm8.2 -F

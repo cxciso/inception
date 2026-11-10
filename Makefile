@@ -5,7 +5,6 @@ COMPOSE  = docker compose -f srcs/docker-compose.yml
 
 all: up
 
-# Prepare everything the containers need before starting
 setup:
 	@mkdir -p $(DATA_DIR)/mariadb $(DATA_DIR)/wordpress
 	@if [ ! -f srcs/.env ]; then \
@@ -40,11 +39,9 @@ ps:
 logs:
 	$(COMPOSE) logs -f
 
-# Remove containers, images and Docker volumes (data on disk is kept)
 clean:
 	$(COMPOSE) down --rmi all --volumes
 
-# clean + delete the data on disk + clear Docker's build cache
 fclean: clean
 	sudo rm -rf $(DATA_DIR)
 	docker builder prune -af
