@@ -1,28 +1,34 @@
 #!/bin/bash
 set -e
 
-DB_NAME=$(cat "$MYSQL_DATABASE_FILE")
-DB_USER=$(cat "$MYSQL_USER_FILE")
-DB_PASS=$(cat "$MYSQL_PASSWORD_FILE")
-ROOT_PASS=$(cat "$MYSQL_ROOT_PASSWORD_FILE")
+# Passwords come from Docker secrets (files mounted in /run/secrets)
+DB_PASS=$(cat /run/secrets/db_password)
+ROOT_PASS=$(cat /run/secrets/db_root_password)
 
+# Folder for the socket file, and ownership of the data folder (the volume)
 mkdir -p /run/mysqld
 chown -R mysql:mysql /run/mysqld /var/lib/mysql
 
+# First start only: the volume is empty, create MariaDB's system tables
 if [ ! -d "/var/lib/mysql/mysql" ]; then
-    mysql_install_db --user=mysql --datadir=/var/lib/mysql > /dev/null
+    echo "[mariadb] Initializing data directory..."
+    mysql_install_db --user=mysql --datadir=/var/lib/mysql --skip-test-db > /dev/null
 fi
 
-if [ ! -d "/var/lib/mysql/$DB_NAME" ]; then
-    mysqld --user=mysql --bootstrap <<EOF
+# First start only: create the WordPress database and its user
+if [ ! -d "/var/lib/mysql/${MYSQL_DATABASE}" ]; then
+    echo "[mariadb] Creating database '${MYSQL_DATABASE}' and user '${MYSQL_USER}'..."
+    mysqld --user=mysql --bootstrap << EOF
 USE mysql;
 FLUSH PRIVILEGES;
-CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;
-CREATE USER IF NOT EXISTS '$DB_USER'@'%' IDENTIFIED BY '$DB_PASS';
-GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'%';
-ALTER USER 'root'@'localhost' IDENTIFIED BY '$ROOT_PASS';
+CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;
+CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${DB_PASS}';
+GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';
+ALTER USER 'root'@'localhost' IDENTIFIED BY '${ROOT_PASS}';
 FLUSH PRIVILEGES;
 EOF
 fi
 
+echo "[mariadb] Starting server..."
+# exec: mysqld replaces this script and becomes PID 1
 exec mysqld --user=mysql
